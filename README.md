@@ -207,6 +207,12 @@ docker compose up -d
 
 ---
 
+## 🗺️ End-to-End Build Plan
+
+See [`docs/E2E_BUILD_PLAN.md`](docs/E2E_BUILD_PLAN.md) for the phased roadmap from the current MVP scaffold to a production platform (demo unblock → durable MVP → job queue/auth → product polish).
+
+---
+
 ## 🧪 Extending the Platform
 
 **Add a new analysis dimension:**
