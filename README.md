@@ -112,10 +112,15 @@ pip install openai-whisper deepface tf-keras opencv-python-headless
 
 ### Render (Docker free tier)
 
-1. Connect this repo in [Render](https://render.com)
-2. Blueprint uses `render.yaml` (service `clarion`)
-3. Or: New Web Service → Docker → root `Dockerfile`
-4. Set optional `OPENAI_API_KEY`
+Step-by-step: **[`docs/RENDER.md`](docs/RENDER.md)**
+
+Short version:
+
+1. [dashboard.render.com](https://dashboard.render.com) → **New → Blueprint**
+2. Connect GitHub repo `herezlovic/ai-interview-platform`
+3. Branch: `main` (or the PR branch until merged) · Blueprint: `render.yaml`
+4. Deploy → open `https://clarion-….onrender.com` → **Run live demo**
+5. Optional: set `OPENAI_API_KEY` in the service Environment tab
 
 ### Fly.io
 

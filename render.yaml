@@ -1,11 +1,21 @@
+# Clarion on Render — Blueprint
+# Docs: https://render.com/docs/infrastructure-as-code
+#
+# After connecting GitHub, open:
+#   https://dashboard.render.com/blueprints
+# Select repo: herezlovic/ai-interview-platform
+# Branch: main (or cursor/e2e-platform-build-plan-3a73 until merged)
+
 services:
   - type: web
     name: clarion
     runtime: docker
     plan: free
+    region: oregon
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
+    autoDeployTrigger: commit
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -15,6 +25,8 @@ services:
         value: mock
       - key: ALLOWED_ORIGINS
         value: "*"
+      - key: STATIC_DIR
+        value: static
       - key: OPENAI_API_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
