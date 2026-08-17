@@ -1,8 +1,12 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
-from enum import Enum
-from datetime import datetime
+from __future__ import annotations
+
 import uuid
+from datetime import datetime
+from enum import Enum
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel, Field
+
 
 class InterviewStatus(str, Enum):
     PENDING = "pending"
@@ -10,11 +14,13 @@ class InterviewStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
 
+
 class EmotionData(BaseModel):
     timestamp: float
     dominant_emotion: str
     emotions: Dict[str, float]
     confidence: float
+
 
 class SpeechSegment(BaseModel):
     start: float
@@ -23,6 +29,7 @@ class SpeechSegment(BaseModel):
     speaker: Optional[str] = None
     confidence: float
 
+
 class TranscriptData(BaseModel):
     full_text: str
     segments: List[SpeechSegment]
@@ -30,6 +37,7 @@ class TranscriptData(BaseModel):
     duration: float
     word_count: int
     words_per_minute: float
+
 
 class CommunicationMetrics(BaseModel):
     clarity_score: float = Field(..., ge=0, le=10)
@@ -41,6 +49,7 @@ class CommunicationMetrics(BaseModel):
     key_themes: List[str]
     notable_phrases: List[str]
 
+
 class EmotionalProfile(BaseModel):
     dominant_emotion: str
     emotion_distribution: Dict[str, float]
@@ -50,12 +59,14 @@ class EmotionalProfile(BaseModel):
     positive_signals: List[str]
     timeline: List[EmotionData]
 
+
 class BehavioralSignals(BaseModel):
     eye_contact_score: float = Field(..., ge=0, le=10)
     posture_assessment: str
     gesture_frequency: str
     attentiveness_score: float = Field(..., ge=0, le=10)
     authenticity_score: float = Field(..., ge=0, le=10)
+
 
 class LLMAnalysis(BaseModel):
     overall_assessment: str
@@ -66,6 +77,7 @@ class LLMAnalysis(BaseModel):
     recommended_follow_up_questions: List[str]
     hiring_recommendation: str
     confidence_in_recommendation: float = Field(..., ge=0, le=1)
+
 
 class CandidateReport(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -84,21 +96,50 @@ class CandidateReport(BaseModel):
     llm_analysis: LLMAnalysis
     video_duration: float
     processing_time: float
+    analysis_mode: str = "demo"  # demo | full | mock_fallback
+
 
 class InterviewSession(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     candidate_name: Optional[str] = None
     position: Optional[str] = None
     interviewer: Optional[str] = None
+    job_description: Optional[str] = None
     status: InterviewStatus = InterviewStatus.PENDING
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     video_path: Optional[str] = None
     report: Optional[CandidateReport] = None
     error_message: Optional[str] = None
+    stage: str = "queued"
+    progress: float = 0.0
+    message: str = "Waiting to start"
+    is_demo: bool = False
+
 
 class ProcessingUpdate(BaseModel):
     interview_id: str
     stage: str
     progress: float
     message: str
+    status: Optional[InterviewStatus] = None
+
+
+class AnalysisStatusResponse(BaseModel):
+    session_id: str
+    status: InterviewStatus
+    stage: str
+    progress: float
+    message: str
+    has_report: bool
+    error: Optional[str] = None
+
+
+class HealthResponse(BaseModel):
+    status: str
+    app: str
+    environment: str
+    whisper: str
+    deepface: str
+    llm: str
+    demo_ready: bool = True

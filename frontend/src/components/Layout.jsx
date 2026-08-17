@@ -1,42 +1,134 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { Brain, LayoutDashboard, Plus, Mic } from 'lucide-react'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { LayoutDashboard, Menu, Plus, Waves, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { getRuntimeMode } from '../utils/api'
+import { getOnboarding } from '../utils/onboarding'
+import WelcomePanel from './WelcomePanel'
+
 export default function Layout() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [mode, setMode] = useState('…')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [welcomeOpen, setWelcomeOpen] = useState(false)
+
+  useEffect(() => {
+    getRuntimeMode().then((m) => setMode(m === 'remote' ? 'API connected' : 'Local demo'))
+  }, [])
+
+  useEffect(() => {
+    const onboarding = getOnboarding()
+    if (!onboarding.welcomeDismissed && !onboarding.completedDemo) {
+      setWelcomeOpen(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
+
+  const links = [
+    { to: '/app', end: true, icon: LayoutDashboard, label: 'Sessions' },
+    { to: '/app/new', end: false, icon: Plus, label: 'New analysis' },
+  ]
+
   return (
-    <div className="flex min-h-screen" style={{background:'var(--bg-primary)'}}>
-      <aside className="w-64 flex-shrink-0 flex flex-col border-r" style={{borderColor:'var(--border)',background:'var(--bg-secondary)'}}>
-        <div className="p-6 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center glow-sm" style={{background:'linear-gradient(135deg,#7c6af7,#60a5fa)'}}>
-              <Brain size={18} className="text-white" />
+    <div className="relative min-h-screen pb-20 md:pb-0">
+      <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-white/70 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
+          <button onClick={() => navigate('/')} className="group flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-600 to-teal-400 text-white shadow-lift">
+              <Waves size={18} />
             </div>
-            <div>
-              <div className="font-display text-sm font-bold" style={{color:'var(--text-primary)'}}>InterviewIQ</div>
-              <div className="text-xs" style={{color:'var(--text-secondary)'}}>AI Platform</div>
+            <div className="text-left">
+              <div className="font-display text-lg font-semibold tracking-tight text-ink-900">Clarion</div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-ink-500">Interview intelligence</div>
             </div>
+          </button>
+
+          <nav className="hidden items-center gap-1 md:flex">
+            {links.map(({ to, end, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  `rounded-xl px-3.5 py-2 text-sm font-medium transition ${
+                    isActive ? 'bg-teal-600/10 text-teal-600' : 'text-ink-500 hover:text-ink-900'
+                  }`
+                }
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Icon size={15} /> {label}
+                </span>
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="hidden rounded-full border border-[var(--line)] bg-white/80 px-3 py-1 text-xs text-ink-500 sm:inline">
+              {mode}
+            </span>
+            <button onClick={() => navigate('/app/new')} className="btn-primary !hidden !py-2.5 !px-4 sm:!inline-flex">
+              <Plus size={15} /> Analyze
+            </button>
+            <button
+              className="rounded-xl border border-[var(--line)] bg-white/80 p-2.5 text-ink-700 md:hidden"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            >
+              {menuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
         </div>
-        <div className="px-4 py-3">
-          <button onClick={() => navigate('/new')} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white" style={{background:'linear-gradient(135deg,#7c6af7,#5b4fd1)'}}>
-            <Plus size={16} /> New Interview
-          </button>
-        </div>
-        <nav className="flex-1 px-3 py-2 space-y-1">
-          {[{to:'/',icon:LayoutDashboard,label:'Dashboard'},{to:'/new',icon:Mic,label:'Analyze Interview'}].map(({to,icon:Icon,label})=>(
-            <NavLink key={to} to={to} end={to==='/'} className={({isActive})=>`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all`}
-              style={({isActive})=>({background:isActive?'rgba(124,106,247,0.15)':'transparent',color:isActive?'var(--text-primary)':'var(--text-secondary)',borderLeft:isActive?'2px solid #7c6af7':'2px solid transparent'})}>
-              <Icon size={16}/>{label}
+
+        {menuOpen && (
+          <div className="border-t border-[var(--line)] bg-white/95 px-5 py-3 md:hidden">
+            <div className="mb-2 text-xs text-ink-500">{mode}</div>
+            {links.map(({ to, end, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  `mb-1 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium ${
+                    isActive ? 'bg-teal-600/10 text-teal-600' : 'text-ink-700'
+                  }`
+                }
+              >
+                <Icon size={16} /> {label}
+              </NavLink>
+            ))}
+          </div>
+        )}
+      </header>
+
+      <main className="mx-auto max-w-6xl px-5 py-8">
+        <Outlet />
+      </main>
+
+      {/* Mobile bottom nav */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-white/90 backdrop-blur-xl md:hidden">
+        <div className="mx-auto grid max-w-lg grid-cols-2 gap-1 px-3 py-2">
+          {links.map(({ to, end, icon: Icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[11px] font-medium ${
+                  isActive ? 'bg-teal-600/10 text-teal-700' : 'text-ink-500'
+                }`
+              }
+            >
+              <Icon size={18} />
+              {label}
             </NavLink>
           ))}
-        </nav>
-        <div className="p-4 border-t" style={{borderColor:'var(--border)'}}>
-          <div className="flex items-center gap-2 px-2">
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/>
-            <span className="text-xs" style={{color:'var(--text-secondary)'}}>All systems operational</span>
-          </div>
         </div>
-      </aside>
-      <main className="flex-1 overflow-auto"><Outlet /></main>
+      </nav>
+
+      <WelcomePanel open={welcomeOpen} onDismiss={() => setWelcomeOpen(false)} />
     </div>
   )
 }

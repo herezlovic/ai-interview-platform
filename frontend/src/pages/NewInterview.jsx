@@ -1,34 +1,200 @@
-import { useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
+import { motion } from 'framer-motion'
+import { AlertCircle, Loader2, Sparkles, Upload, Video } from 'lucide-react'
 import { interviewAPI } from '../utils/api'
-import { Upload, Video, Sparkles, Loader2, AlertCircle } from 'lucide-react'
+import { markDemoCompleted } from '../utils/onboarding'
+
 export default function NewInterview() {
-  const navigate=useNavigate();const[file,setFile]=useState(null);const[form,setForm]=useState({candidate_name:'',position:'',interviewer:'',job_description:''});const[loading,setLoading]=useState(false);const[error,setError]=useState(null);const[mode,setMode]=useState('upload')
-  const onDrop=useCallback(a=>{if(a[0])setFile(a[0])},[])
-  const{getRootProps,getInputProps,isDragActive}=useDropzone({onDrop,accept:{'video/*':['.mp4','.webm','.mov','.avi']},maxFiles:1,disabled:mode==='demo'})
-  const handleSubmit=async()=>{setLoading(true);setError(null);try{const fd=new FormData();if(form.candidate_name)fd.append('candidate_name',form.candidate_name);if(form.position)fd.append('position',form.position);if(form.interviewer)fd.append('interviewer',form.interviewer);if(form.job_description)fd.append('job_description',form.job_description);if(file&&mode==='upload')fd.append('video',file);const{data:session}=await interviewAPI.create(fd);if(mode==='demo')await interviewAPI.runDemo(session.id,form.position);navigate(`/interviews/${session.id}`)}catch(err){setError(err.response?.data?.detail||err.message||'Failed to start analysis')}finally{setLoading(false)}}
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const [file, setFile] = useState(null)
+  const [form, setForm] = useState({
+    candidate_name: 'Alex Rivera',
+    position: 'Staff Engineer',
+    interviewer: '',
+    job_description: '',
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [mode, setMode] = useState(params.get('mode') === 'upload' ? 'upload' : 'demo')
+
+  useEffect(() => {
+    if (params.get('mode') === 'upload') setMode('upload')
+  }, [params])
+
+  const onDrop = useCallback((accepted) => {
+    if (accepted[0]) setFile(accepted[0])
+  }, [])
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'video/*': ['.mp4', '.webm', '.mov', '.avi'] },
+    maxFiles: 1,
+    disabled: mode === 'demo',
+  })
+
+  const handleSubmit = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const fd = new FormData()
+      Object.entries(form).forEach(([k, v]) => {
+        if (v) fd.append(k, v)
+      })
+      if (file && mode === 'upload') fd.append('video', file)
+      const { data: session } = await interviewAPI.create(fd)
+      if (mode === 'demo') {
+        await interviewAPI.runDemo(session.id, form.position)
+        markDemoCompleted()
+      }
+      navigate(`/app/interviews/${session.id}`)
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'Failed to start analysis')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <div className="p-8 max-w-3xl mx-auto animate-fade-in">
-      <div className="mb-8"><h1 className="font-display text-3xl font-bold tracking-tight" style={{color:'var(--text-primary)'}}>New Interview Analysis</h1><p className="mt-1 text-sm" style={{color:'var(--text-secondary)'}}>Upload a recorded interview or run a demo</p></div>
-      <div className="flex gap-2 mb-6 p-1 rounded-xl" style={{background:'var(--bg-card)'}}>
-        {[{key:'upload',label:'Upload Video',icon:Upload},{key:'demo',label:'Demo Mode',icon:Sparkles}].map(({key,label,icon:Icon})=>(
-          <button key={key} onClick={()=>setMode(key)} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all" style={{background:mode===key?'rgba(124,106,247,0.2)':'transparent',color:mode===key?'#a78bfa':'var(--text-secondary)',border:mode===key?'1px solid rgba(124,106,247,0.3)':'1px solid transparent'}}><Icon size={15}/>{label}</button>
+    <div className="mx-auto max-w-2xl animate-rise">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-600">New analysis</p>
+      <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight text-ink-900">
+        Evaluate an interview
+      </h1>
+      <p className="mt-2 text-sm text-ink-500">
+        New customers usually start with Demo Mode. Upload when you have a recording and an API with ML enabled.
+      </p>
+
+      {/* Lightweight path indicator */}
+      <div className="mt-6 flex items-center gap-2 text-xs font-medium text-ink-500">
+        <span className="rounded-lg bg-teal-600/10 px-2.5 py-1 text-teal-700">1 · Path</span>
+        <span className="h-px flex-1 bg-[var(--line)]" />
+        <span className="rounded-lg bg-ink-900/5 px-2.5 py-1">2 · Details</span>
+        <span className="h-px flex-1 bg-[var(--line)]" />
+        <span className="rounded-lg bg-ink-900/5 px-2.5 py-1">3 · Run</span>
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl border border-[var(--line)] bg-white/60 p-1.5">
+        {[
+          { key: 'demo', label: 'Demo Mode', icon: Sparkles, hint: 'Recommended' },
+          { key: 'upload', label: 'Upload video', icon: Upload, hint: null },
+        ].map(({ key, label, icon: Icon, hint }) => (
+          <button
+            key={key}
+            onClick={() => setMode(key)}
+            className={`relative flex flex-col items-center justify-center gap-1 rounded-xl py-3 text-sm font-medium transition ${
+              mode === key ? 'bg-teal-600 text-white shadow-soft' : 'text-ink-500 hover:text-ink-900'
+            }`}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Icon size={15} /> {label}
+            </span>
+            {hint && mode !== key && (
+              <span className="text-[10px] font-normal text-teal-600">{hint}</span>
+            )}
+            {hint && mode === key && (
+              <span className="text-[10px] font-normal text-teal-100">{hint}</span>
+            )}
+          </button>
         ))}
       </div>
-      {mode==='upload'&&<div {...getRootProps()} className="mb-6 rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition-all" style={{borderColor:isDragActive?'#7c6af7':file?'#4ade80':'rgba(255,255,255,0.1)',background:file?'rgba(74,222,128,0.03)':'var(--bg-card)'}}><input {...getInputProps()}/>{file?<><Video size={40} className="mx-auto mb-3" style={{color:'#4ade80'}}/><p className="font-medium text-sm" style={{color:'#4ade80'}}>{file.name}</p><p className="text-xs mt-1" style={{color:'var(--text-secondary)'}}>{(file.size/1024/1024).toFixed(1)} MB</p></>:<><Upload size={40} className="mx-auto mb-3 opacity-40" style={{color:'var(--text-secondary)'}}/><p className="font-medium text-sm" style={{color:'var(--text-primary)'}}>{isDragActive?'Drop video here':'Drag & drop interview video'}</p><p className="text-xs mt-1" style={{color:'var(--text-secondary)'}}>MP4, WebM, MOV · Up to 500MB</p></>}</div>}
-      {mode==='demo'&&<div className="mb-6 rounded-2xl p-5 border" style={{background:'rgba(124,106,247,0.05)',borderColor:'rgba(124,106,247,0.2)'}}><div className="flex items-start gap-3"><Sparkles size={18} style={{color:'#a78bfa'}} className="mt-0.5"/><div><p className="text-sm font-medium" style={{color:'#a78bfa'}}>Demo Mode Active</p><p className="text-xs mt-1" style={{color:'var(--text-secondary)'}}>No video required. Generates a complete analysis using realistic synthetic data.</p></div></div></div>}
-      <div className="space-y-4 mb-6">
-        <div className="grid grid-cols-2 gap-4">
-          {[{key:'candidate_name',label:'Candidate Name',placeholder:'Jane Smith'},{key:'position',label:'Position Applied',placeholder:'Senior Engineer'},{key:'interviewer',label:'Interviewer',placeholder:'Your name'}].map(({key,label,placeholder})=>(
-            <div key={key} className={key==='interviewer'?'col-span-2':''}><label className="block text-xs font-medium mb-1.5" style={{color:'var(--text-secondary)'}}>{label}</label><input value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} placeholder={placeholder} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-primary)'}}/></div>
-          ))}
+
+      {mode === 'upload' ? (
+        <div
+          {...getRootProps()}
+          className={`mt-6 cursor-pointer rounded-[1.75rem] border-2 border-dashed p-12 text-center transition ${
+            isDragActive
+              ? 'border-teal-500 bg-teal-50/60'
+              : file
+                ? 'border-emerald-400 bg-emerald-50/40'
+                : 'border-[var(--line)] bg-white/50'
+          }`}
+        >
+          <input {...getInputProps()} />
+          {file ? (
+            <>
+              <Video className="mx-auto mb-3 text-emerald-600" size={36} />
+              <p className="font-medium text-emerald-700">{file.name}</p>
+              <p className="mt-1 text-xs text-ink-500">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+            </>
+          ) : (
+            <>
+              <Upload className="mx-auto mb-3 text-ink-500" size={36} />
+              <p className="font-medium text-ink-900">
+                {isDragActive ? 'Drop video here' : 'Drag & drop interview video'}
+              </p>
+              <p className="mt-1 text-xs text-ink-500">MP4, WebM, MOV · up to 500MB</p>
+            </>
+          )}
         </div>
-        <div><label className="block text-xs font-medium mb-1.5" style={{color:'var(--text-secondary)'}}>Job Description (optional)</label><textarea value={form.job_description} onChange={e=>setForm(f=>({...f,job_description:e.target.value}))} placeholder="Paste the job description here..." rows={4} className="w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none" style={{background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-primary)'}}/></div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 rounded-[1.75rem] border border-teal-600/20 bg-teal-600/5 p-5"
+        >
+          <div className="flex items-start gap-3">
+            <Sparkles className="mt-0.5 text-teal-600" size={18} />
+            <div>
+              <p className="text-sm font-semibold text-teal-700">Demo Mode ready</p>
+              <p className="mt-1 text-sm text-ink-500">
+                No video required. Generates a complete report with transcript, emotion timeline, scores, and hiring recommendation.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        {[
+          { key: 'candidate_name', label: 'Candidate name', placeholder: 'Alex Rivera' },
+          { key: 'position', label: 'Position', placeholder: 'Staff Engineer' },
+          { key: 'interviewer', label: 'Interviewer', placeholder: 'Your name', span: true },
+        ].map(({ key, label, placeholder, span }) => (
+          <div key={key} className={span ? 'sm:col-span-2' : ''}>
+            <label className="mb-1.5 block text-xs font-medium text-ink-500">{label}</label>
+            <input
+              className="input"
+              value={form[key]}
+              placeholder={placeholder}
+              onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+            />
+          </div>
+        ))}
+        <div className="sm:col-span-2">
+          <label className="mb-1.5 block text-xs font-medium text-ink-500">Job description (optional)</label>
+          <textarea
+            className="input min-h-[110px] resize-y"
+            value={form.job_description}
+            placeholder="Paste the role description to ground the LLM recommendation…"
+            onChange={(e) => setForm((f) => ({ ...f, job_description: e.target.value }))}
+          />
+        </div>
       </div>
-      {error&&<div className="flex items-center gap-2 mb-4 px-4 py-3 rounded-xl text-sm" style={{background:'rgba(248,113,113,0.1)',color:'#f87171'}}><AlertCircle size={16}/>{error}</div>}
-      <button onClick={handleSubmit} disabled={loading||!(mode==='demo'||file)} className="w-full py-3.5 rounded-xl text-sm font-medium text-white flex items-center justify-center gap-2 disabled:opacity-50" style={{background:'linear-gradient(135deg,#7c6af7,#5b4fd1)'}}>
-        {loading?<><Loader2 size={16} className="animate-spin"/>Starting...</>:<><Sparkles size={16}/>{mode==='demo'?'Run Demo Analysis':'Analyze Interview'}</>}
+
+      {error && (
+        <div className="mt-4 flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <AlertCircle size={16} /> {error}
+        </div>
+      )}
+
+      <button
+        onClick={handleSubmit}
+        disabled={loading || !(mode === 'demo' || file)}
+        className="btn-primary mt-6 w-full !py-3.5"
+      >
+        {loading ? (
+          <>
+            <Loader2 size={16} className="animate-spin" /> Starting…
+          </>
+        ) : (
+          <>
+            <Sparkles size={16} />
+            {mode === 'demo' ? 'Run demo analysis' : 'Analyze interview'}
+          </>
+        )}
       </button>
     </div>
   )
