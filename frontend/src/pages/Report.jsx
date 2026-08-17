@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Activity,
   AlertTriangle,
   ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -12,11 +13,14 @@ import {
   Loader2,
   MessageSquare,
   Mic,
+  Sparkles,
+  X,
 } from 'lucide-react'
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer } from 'recharts'
 import ScoreRing from '../components/ScoreRing'
 import EmotionTimeline from '../components/EmotionTimeline'
 import { interviewAPI } from '../utils/api'
+import { getOnboarding, markFirstReportSeen } from '../utils/onboarding'
 
 const REC = {
   'Strong Yes': 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -68,6 +72,7 @@ export default function Report() {
   const [report, setReport] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showTranscript, setShowTranscript] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)
 
   useEffect(() => {
     interviewAPI
@@ -76,6 +81,17 @@ export default function Report() {
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    if (!loading && report && !getOnboarding().firstReportSeen) {
+      setShowGuide(true)
+    }
+  }, [loading, report])
+
+  const dismissGuide = () => {
+    markFirstReportSeen()
+    setShowGuide(false)
+  }
 
   if (loading) {
     return (
@@ -120,6 +136,45 @@ export default function Report() {
           Mode: {report.analysis_mode || 'demo'}
         </span>
       </div>
+
+      <AnimatePresence>
+        {showGuide && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="relative overflow-hidden rounded-3xl border border-teal-600/20 bg-gradient-to-r from-teal-50 to-white px-5 py-4"
+          >
+            <button
+              onClick={dismissGuide}
+              className="absolute right-3 top-3 rounded-lg p-1.5 text-ink-500 hover:bg-white"
+              aria-label="Dismiss guide"
+            >
+              <X size={14} />
+            </button>
+            <div className="flex flex-col gap-3 pr-8 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <Sparkles className="mt-0.5 shrink-0 text-teal-600" size={18} />
+                <div>
+                  <p className="text-sm font-semibold text-ink-900">Your first Clarion report</p>
+                  <p className="mt-0.5 text-sm text-ink-500">
+                    Start with the overall score and recommendation, then open Communication and Emotion for evidence.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  dismissGuide()
+                  navigate('/app/new')
+                }}
+                className="btn-primary shrink-0 !py-2.5"
+              >
+                Run another <ArrowRight size={14} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <motion.div
         initial={{ opacity: 0, y: 12 }}

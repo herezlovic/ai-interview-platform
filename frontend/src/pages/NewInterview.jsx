@@ -1,12 +1,14 @@
-import { useCallback, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone'
 import { motion } from 'framer-motion'
 import { AlertCircle, Loader2, Sparkles, Upload, Video } from 'lucide-react'
 import { interviewAPI } from '../utils/api'
+import { markDemoCompleted } from '../utils/onboarding'
 
 export default function NewInterview() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const [file, setFile] = useState(null)
   const [form, setForm] = useState({
     candidate_name: 'Alex Rivera',
@@ -16,7 +18,11 @@ export default function NewInterview() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [mode, setMode] = useState('demo')
+  const [mode, setMode] = useState(params.get('mode') === 'upload' ? 'upload' : 'demo')
+
+  useEffect(() => {
+    if (params.get('mode') === 'upload') setMode('upload')
+  }, [params])
 
   const onDrop = useCallback((accepted) => {
     if (accepted[0]) setFile(accepted[0])
@@ -39,7 +45,10 @@ export default function NewInterview() {
       })
       if (file && mode === 'upload') fd.append('video', file)
       const { data: session } = await interviewAPI.create(fd)
-      if (mode === 'demo') await interviewAPI.runDemo(session.id, form.position)
+      if (mode === 'demo') {
+        await interviewAPI.runDemo(session.id, form.position)
+        markDemoCompleted()
+      }
       navigate(`/app/interviews/${session.id}`)
     } catch (err) {
       setError(err.response?.data?.detail || err.message || 'Failed to start analysis')
@@ -55,22 +64,39 @@ export default function NewInterview() {
         Evaluate an interview
       </h1>
       <p className="mt-2 text-sm text-ink-500">
-        Demo Mode is always available. Upload mode uses Whisper + DeepFace when the API has ML enabled.
+        New customers usually start with Demo Mode. Upload when you have a recording and an API with ML enabled.
       </p>
 
-      <div className="mt-8 grid grid-cols-2 gap-2 rounded-2xl border border-[var(--line)] bg-white/60 p-1.5">
+      {/* Lightweight path indicator */}
+      <div className="mt-6 flex items-center gap-2 text-xs font-medium text-ink-500">
+        <span className="rounded-lg bg-teal-600/10 px-2.5 py-1 text-teal-700">1 · Path</span>
+        <span className="h-px flex-1 bg-[var(--line)]" />
+        <span className="rounded-lg bg-ink-900/5 px-2.5 py-1">2 · Details</span>
+        <span className="h-px flex-1 bg-[var(--line)]" />
+        <span className="rounded-lg bg-ink-900/5 px-2.5 py-1">3 · Run</span>
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl border border-[var(--line)] bg-white/60 p-1.5">
         {[
-          { key: 'demo', label: 'Demo Mode', icon: Sparkles },
-          { key: 'upload', label: 'Upload video', icon: Upload },
-        ].map(({ key, label, icon: Icon }) => (
+          { key: 'demo', label: 'Demo Mode', icon: Sparkles, hint: 'Recommended' },
+          { key: 'upload', label: 'Upload video', icon: Upload, hint: null },
+        ].map(({ key, label, icon: Icon, hint }) => (
           <button
             key={key}
             onClick={() => setMode(key)}
-            className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition ${
+            className={`relative flex flex-col items-center justify-center gap-1 rounded-xl py-3 text-sm font-medium transition ${
               mode === key ? 'bg-teal-600 text-white shadow-soft' : 'text-ink-500 hover:text-ink-900'
             }`}
           >
-            <Icon size={15} /> {label}
+            <span className="inline-flex items-center gap-2">
+              <Icon size={15} /> {label}
+            </span>
+            {hint && mode !== key && (
+              <span className="text-[10px] font-normal text-teal-600">{hint}</span>
+            )}
+            {hint && mode === key && (
+              <span className="text-[10px] font-normal text-teal-100">{hint}</span>
+            )}
           </button>
         ))}
       </div>

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { AlertCircle, Brain, CheckCircle2, Eye, FileText, Loader2, Mic, Zap } from 'lucide-react'
 import { interviewAPI, pollStatus } from '../utils/api'
+import { markDemoCompleted } from '../utils/onboarding'
 
 const STAGES = [
   { key: 'transcription', label: 'Speech transcription', sublabel: 'Whisper', icon: Mic },
@@ -29,7 +30,10 @@ export default function InterviewDetail() {
         if (i >= 0) setCurrentStage(i)
       }
       setProgress(update.progress || 0)
-      if (update.status === 'completed') navigate(`/app/reports/${id}`, { replace: true })
+      if (update.status === 'completed') {
+        markDemoCompleted()
+        navigate(`/app/reports/${id}`, { replace: true })
+      }
     })
     return stop
   }, [id, navigate])
